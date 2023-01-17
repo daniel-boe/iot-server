@@ -33,7 +33,7 @@ def post_sensor_data():
         {'host':<IoT device host name>,'sensor_data':{<field-1>:<value>,<field-2>:value ...}}
 
     Here is an example of some real data from a temperature/humdity sensor:
-        {"sensor_data": {"temp": 13.48471,"humidity":46.39872}, "host": "test-data"}}
+        {"host": "test-data","sensor_data": {"temp": 13.48471,"humidity":46.39872}}}
 
     Note that it is not required to include measurement timestamp in the incoming json. Many IoT
     devices will not have a real time clock, so a timestamp will always be added here unless one is 
