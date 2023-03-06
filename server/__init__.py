@@ -6,7 +6,7 @@ def create_app():
     
     # Configuration
     app.config['SECRET_KEY'] = 'secret-key'
-    app.config['DATABASE'] = os.path.join(app.instance_path, 'senserver.sqlite')
+    app.config['DATABASE'] = os.path.join(app.instance_path, 'iot-server.sqlite')
 
     # ensure the instance folder exists
     try:
