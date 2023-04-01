@@ -27,9 +27,8 @@ def insert_data_to_local(data: models.RawDeviceRecord | models.RawDeviceRecordMa
     if not records:
         return True
 
-    db_manager.get_db().executemany(q,records)
-    db_manager.close_db()
-    
+    db_manager.execute_many(q,records)
+
 
 
 def handle_influx(*args,**kwargs):
@@ -37,8 +36,7 @@ def handle_influx(*args,**kwargs):
 
     log.info('Forwarding Data to InfluxDB')
     q = 'SELECT *, ROWID FROM sensorDataSyncInflux LIMIT 5'
-    data = db_manager.get_db().execute(q).fetchall()
-    db_manager.close_db()
+    data = db_manager.get_data_many(q)
     data = [models.TableRecord(**r) for r in data]
     row_ids = [[r.rowid] for r in data]
     data = [r.to_influx() for r in data]
@@ -62,9 +60,6 @@ def handle_influx(*args,**kwargs):
     if result:
         log.info(f'Deleting {row_ids} from sync table')
         q = "DELETE FROM sensorDataSyncInflux WHERE ROWID=?"
-        db_manager.get_db().executemany(q,row_ids)
+        db_manager.execute_many(q,row_ids)
     else:
         log.error('Writing to influx failed')
-
-    db_manager.close_db()
-
