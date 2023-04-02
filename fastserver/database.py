@@ -1,6 +1,5 @@
 import contextlib
 import sqlite3
-from threading import Lock
 from fastserver.config import DB_LOC, DB_SCHEMA
 from loguru import logger as log
 from fastserver import models
