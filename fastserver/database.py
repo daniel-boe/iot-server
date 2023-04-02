@@ -1,7 +1,9 @@
+import contextlib
 import sqlite3
 from threading import Lock
 from fastserver.config import DB_LOC, DB_SCHEMA
 from loguru import logger as log
+from fastserver import models
 
 def init_db():
     with sqlite3.connect(DB_LOC) as db:
@@ -9,71 +11,45 @@ def init_db():
     db.close()
 
 def get_db():
-    db = DB_Session()
+    db = sqlite3.connect(DB_LOC,check_same_thread=False)
+    db.row_factory = sqlite3.Row
     try:
         yield db
     finally:
+        db.commit()
         db.close()
 
-class DB_Session:
+@contextlib.contextmanager
+def get_db_ctx():
+    db = sqlite3.connect(DB_LOC,check_same_thread=False)
+    db.row_factory = sqlite3.Row
+    try:
+        yield db
+    finally:
+        db.commit()
+        db.close()
 
-    def __init__(self) -> None:
-        self.db = sqlite3.connect(DB_LOC)
+def insert_data_to_local(db :sqlite3.Connection ,data: models.RawDeviceRecord | models.RawDeviceRecordMany):
+    columns= ('device_id','tmeas','sensor_name','sensor_value')
+    q = f"""INSERT INTO sensorData {repr(columns)} VALUES (?,?,?,?)"""
+    records = []
 
-class DB_Manager:
-    db_lock = Lock()
-    def __init__(self) -> None:
-        self.db = sqlite3.connect(DB_LOC)
-        self.db.close()
-        init_db()
+    if isinstance(data,models.RawDeviceRecord):
+        log.info('Handling RawDeviceRecord')
+        for k,v in data.measurements.items():
+            records.append((data.device_id,data.tmeas,k,v))
 
-    def get_data_many(self,q):
-        with self.db_lock:
-            data = self.get_db().execute(q).fetchall()
-            self.close_db()
-        return data
+    elif isinstance(data,models.RawDeviceRecordMany):
+        log.info('Handling RawDeviceRecordMany')
+        for sample in data.samples:
+            for k,v in sample.measurements.items():
+                records.append((data.device_id,sample.tmeas,k,v))
+    else:
+        log.error('Invalid data model received')
 
-    def get_data_one(self,q):
-        with self.db_lock:
-            data = self.get_db().execute(q).fetchone()
-            self.close_db()
-        return data
-    
-    def execute_many(self,q,data):
-        with self.db_lock:
-            self.get_db().executemany(q,data)
-            self.close_db()
-
-    def execute_single(self,q,data):
-        with self.db_lock:
-            self.get_db().execute(q,data)
-            self.close_db()
-        
-
-    def get_db(self):
-        if not self.is_open():
-            log.info('Opening DB connection')
-            self.db = sqlite3.connect(DB_LOC,check_same_thread=False)
-            self.db.row_factory=sqlite3.Row
-        return self.db
-
-    def is_open(self):
-        try:
-            cur = self.db.cursor()
-            log.info('Database connection is open')
-            cur.close()
-            return True
-        except sqlite3.ProgrammingError:
-            log.info('Database is closed')
-            return False 
-
-    def close_db(self,commit = True):
-        if not self.is_open():
-            log.info('database is already closed')
-            return True
-        if commit:
-            self.db.commit()
-        self.db.close()
+    if not records:
         return True
-
+    db.executemany(q,records)
     
+if __name__ == '__main__':
+    init_db()

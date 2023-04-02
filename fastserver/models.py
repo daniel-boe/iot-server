@@ -96,3 +96,6 @@ class TableRecord(BaseModel):
             time = self.tmeas.isoformat(timespec='milliseconds'),
             fields = dict(sensor_value=self.sensor_value,tcreate=datetime.utcnow().isoformat(timespec='milliseconds'))
         )
+    
+    def to_sql(self):
+        return (self.tmeas,self.device_id,self.sensor_name,self.sensor_value)
