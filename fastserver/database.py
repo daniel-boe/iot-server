@@ -8,6 +8,18 @@ def init_db():
         db.executescript(DB_SCHEMA.read_text())
     db.close()
 
+def get_db():
+    db = DB_Session()
+    try:
+        yield db
+    finally:
+        db.close()
+
+class DB_Session:
+
+    def __init__(self) -> None:
+        self.db = sqlite3.connect(DB_LOC)
+
 class DB_Manager:
     db_lock = Lock()
     def __init__(self) -> None:
