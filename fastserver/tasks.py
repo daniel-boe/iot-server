@@ -58,7 +58,7 @@ class InfluxHandler(RemoteDBHandler):
         q = f'SELECT * FROM sensorDataSync WHERE rowID BETWEEN {rn} AND {rn + self.batch_limit}'
         data = db.execute(q).fetchall()
         data = [models.TableRecord(**r) for r in data]
-        row_ids = [[r.rowid] for r in data]
+        row_ids = [r.rowid for r in data]
         data = [r.to_influx() for r in data]
         log.info(f'Found {len(row_ids)} records for InfluxDB')
         
@@ -97,7 +97,7 @@ class MariaHandler(RemoteDBHandler):
         if not data:
             log.warning('No Data found to forward to maria')
             return 
-        row_ids = [[r.rowid] for r in data]
+        row_ids = [r.rowid for r in data]
         data = [r.to_sql() for r in data]
         log.info(f'Found {len(row_ids)} records for MariaDB')
 
