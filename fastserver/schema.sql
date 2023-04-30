@@ -2,7 +2,7 @@
 
 -- Data Log Table  
 CREATE TABLE IF NOT EXISTS sensorData (
-  rowid INT PRIMARY KEY AUTOINCREMENT,
+  rowid INTEGER PRIMARY KEY AUTOINCREMENT,
   device_id TEXT NOT NULL,
   tmeas TIMESTAMP NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS sensorData (
 
 -- Data Log Table queue for shipping data to remote 
 CREATE TABLE IF NOT EXISTS sensorDataSync (
-  rowid INT PRIMARY KEY AUTOINCREMENT,
+  rowid INTEGER PRIMARY KEY AUTOINCREMENT,
   device_id TEXT NOT NULL,
   tmeas TIMESTAMP NOT NULL,
   created_at TIMESTAMP NOT NULL,
