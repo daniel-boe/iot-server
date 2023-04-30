@@ -7,6 +7,7 @@ load_dotenv(path.join(basedir,'deploy','.env'))
 
 DB_LOC = Path('fastserver','db.sqlite')
 DB_SCHEMA = Path('fastserver','schema.sql')
+DB_HANDLERS_DIR = Path('fastserver','.DataHandlers')
 INFLUX_MEASUREMENT = environ.get('INFLUX_MEAS')
 INFLUX_HOST = environ.get('INFLUX_HOST')
 INFLUX_PORT = int(environ.get('INFLUX_PORT'))

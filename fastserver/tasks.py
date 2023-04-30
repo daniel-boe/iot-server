@@ -3,7 +3,7 @@ from fastserver import models, config
 from fastserver.database import get_db_ctx
 from loguru import logger as log
 from sqlite3 import Connection
-from time import sleep
+from pathlib import Path
 
 if 'influxdb' in config.DATA_HANDLERS:
     from influxdb import InfluxDBClient
@@ -14,7 +14,7 @@ if 'mariadb' in config.DATA_HANDLERS:
 class RemoteDBManager:
 
     def __init__(self):
-        self.handlers = [c for c in RemoteDBHandler.__subclasses__() if c.handles in config.DATA_HANDLERS]
+        self.handlers = [c() for c in RemoteDBHandler.__subclasses__() if c.handles in config.DATA_HANDLERS]
 
     def handle_data(self,*args,**kwargs):
         log.debug('Handling data plugins')
@@ -27,22 +27,35 @@ class RemoteDBManager:
 class RemoteDBHandler:
 
     def __init__(self):
-        pass
+        self.sent_path = config.DB_HANDLERS_DIR / f'{self.__class__.__name__}.txt'
+        if not self.sent_path.exists():
+            self.sent_path.write_text('0')
 
-    @abc.abstractclassmethod
     def handle(self,db:Connection):
+        start_rn = int(self.sent_path.read_text())
+        if new_rn := self.handler(db,start_rn):
+            self.sent_path.write_text(str(new_rn + 1))
+
+    @abc.abstractmethod
+    def handler(self,db:Connection,rn:int) -> int | None:
+        """
+        Returns the maximum row number fetched or if None of no data were fetched
+        Args:
+            db (Connection): sqlite3 connection
+            rn (int): row number to start fetching data from (inclusive)
+        """
         pass
 
 
 class InfluxHandler(RemoteDBHandler):
     handles = 'influxdb'
+    batch_limit = 10
 
-    @classmethod
-    def handle(cls,db:Connection):
+    def handler(self,db:Connection,rn):
         result = False
 
         log.info('Forwarding Data to InfluxDB')
-        q = 'SELECT *, ROWID FROM sensorDataSyncInflux LIMIT 5'
+        q = f'SELECT *, rowID FROM sensorDataSync WHERE rowID BETWEEN {rn} AND {rn + self.batch_limit}'
         data = db.execute(q).fetchall()
         data = [models.TableRecord(**r) for r in data]
         row_ids = [[r.rowid] for r in data]
@@ -66,20 +79,19 @@ class InfluxHandler(RemoteDBHandler):
 
         if result:
             log.info(f'Deleting {row_ids} from sync table')
-            q = "DELETE FROM sensorDataSyncInflux WHERE ROWID=?"
-            db.executemany(q,row_ids)
+            return max(row_ids)
         else:
             log.error('Writing to influx failed')
 
 class MariaHandler(RemoteDBHandler):
     handles = 'mariadb'
+    batch_limit = 10
 
-    @classmethod
-    def handle(cls,db:Connection):
+    def handler(self,db:Connection,rn):
         result = False
 
         log.info('Forwarding Data to mariaDB')
-        q = 'SELECT *, ROWID FROM sensorDataSyncMaria LIMIT 5'
+        q = f'SELECT *, rowID FROM sensorDataSync WHERE rowID BETWEEN {rn} AND {rn + self.batch_limit}'
         data = db.execute(q).fetchall()
         data = [models.TableRecord(**r) for r in data]
         if not data:
@@ -107,15 +119,14 @@ class MariaHandler(RemoteDBHandler):
         try:
             cur.executemany(q,data)
             result = True
+            cur.close()
+            conn.commit()
         except Exception as e:
             log.error(e)
-        cur.close()
-        conn.commit()
         conn.close()
 
         if result:
-            log.info(f'Deleting {row_ids} from sync table')
-            q = "DELETE FROM sensorDataSyncMaria WHERE ROWID=?"
-            db.executemany(q,row_ids)
+            log.info(f'Data insertion to mariaDB successful')
+            return max(row_ids)
         else:
             log.error('Writing to mariaDB failed')
