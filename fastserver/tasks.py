@@ -55,7 +55,7 @@ class InfluxHandler(RemoteDBHandler):
         result = False
 
         log.info('Forwarding Data to InfluxDB')
-        q = f'SELECT *, rowID FROM sensorDataSync WHERE rowID BETWEEN {rn} AND {rn + self.batch_limit}'
+        q = f'SELECT * FROM sensorDataSync WHERE rowID BETWEEN {rn} AND {rn + self.batch_limit}'
         data = db.execute(q).fetchall()
         data = [models.TableRecord(**r) for r in data]
         row_ids = [[r.rowid] for r in data]
@@ -91,7 +91,7 @@ class MariaHandler(RemoteDBHandler):
         result = False
 
         log.info('Forwarding Data to mariaDB')
-        q = f'SELECT *, rowID FROM sensorDataSync WHERE rowID BETWEEN {rn} AND {rn + self.batch_limit}'
+        q = f'SELECT * FROM sensorDataSync WHERE rowID BETWEEN {rn} AND {rn + self.batch_limit}'
         data = db.execute(q).fetchall()
         data = [models.TableRecord(**r) for r in data]
         if not data:
