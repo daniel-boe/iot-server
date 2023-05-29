@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 from os import environ, path
@@ -10,15 +11,22 @@ DB_SCHEMA = Path('fastserver','schema.sql')
 DB_HANDLERS_DIR = Path('fastserver','.DataHandlers')
 INFLUX_MEASUREMENT = environ.get('INFLUX_MEAS')
 INFLUX_HOST = environ.get('INFLUX_HOST')
-INFLUX_PORT = int(environ.get('INFLUX_PORT'))
+try:
+    INFLUX_PORT = int(environ.get('INFLUX_PORT'))
+except TypeError:
+    INFLUX_PORT = None
+
 INFLUX_USER = environ.get('INFLUX_USER')
 INFLUX_PASS = environ.get('INFLUX_PASS')
 INFLUX_DB = environ.get('INFLUX_DB')
-DATA_HANDLERS = ['mariadb']
+DATA_HANDLERS = json.loads(environ.get('DATA_HANDLERS','[]').replace("'",'"'))
 
 MARIA_USER=environ.get('MARIA_USER')
 MARIA_PASSWORD=environ.get('MARIA_PASSWORD')
 MARIA_HOST=environ.get('MARIA_HOST')
-MARIA_PORT=int(environ.get('MARIA_PORT'))
+try:
+    MARIA_PORT=int(environ.get('MARIA_PORT'))
+except TypeError:
+    MARIA_PORT=None
 MARIA_DATABASE=environ.get('MARIA_DATABASE')
 MARIA_TABLE=environ.get('MARIA_TABLE')
