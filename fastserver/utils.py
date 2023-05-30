@@ -34,9 +34,25 @@ def get_recent_data(db:Connection,
     else:
         return []
     
-
 def get_unique_devices(db:Connection) -> list[Row]:
     q = """SELECT device_id,  strftime('%s','now') - strftime('%s',MAX(tmeas)) as last_heard_sec from sensorData GROUP BY device_id"""
+    
+    data = db.execute(q).fetchall()
+    if data:
+        return data
+    else:
+        return []
+    
+
+
+def get_last_measurements(db:Connection) -> list[Row]:
+    q = """SELECT X.device_id, strftime('%s','now') - strftime('%s',X.tmeas) as seconds_ago,
+                 X.sensor_name, round(X.sensor_value,2) as value
+       FROM sensorData X 
+            join 
+            (SELECT device_id, MAX(tmeas) as tmeas FROM sensorData GROUP BY device_id) Y
+            ON X.device_id = y.device_id and X.tmeas = Y.tmeas
+       """
     
     data = db.execute(q).fetchall()
     if data:

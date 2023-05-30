@@ -28,6 +28,8 @@ async def sensor_data_many(packet: models.RawDeviceRecordMany, background_tasks:
     background_tasks.add_task(remote_data_manager.handle_data)
     return {"status": "Hello World"}
 
+################ GETS ##################################
+
 @app.get('/last-n-records/')
 async def last_n_records(device_id:str|None=None, n:int=10, db:Connection=Depends(get_db)):
     log.info(f'Finding last {n} records for device: {device_id}')
@@ -54,6 +56,16 @@ async def records_seconds_ago(device_id: list[str] | None = Query(default=None),
 async def device_ids(db:Connection=Depends(get_db)):
     log.info(f'Finding uniuqe device ids')
     results = utils.get_unique_devices(db)
+    if results:
+        results = [dict(r) for r in results]
+        return {'status':'OK','results':results}
+    else:
+        return {'status':'NONE','results':[]}
+
+@app.get('/last-measurements/')
+async def last_measurements(db:Connection=Depends(get_db)):
+    log.info(f'Finding last measurements')
+    results = utils.get_last_measurements(db)
     if results:
         results = [dict(r) for r in results]
         return {'status':'OK','results':results}
