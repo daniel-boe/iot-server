@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, Depends
+from fastapi import FastAPI, BackgroundTasks, Depends, Query
 from fastserver import models, utils
 from devtools import debug
 from fastserver import tasks
@@ -28,12 +28,34 @@ async def sensor_data_many(packet: models.RawDeviceRecordMany, background_tasks:
     background_tasks.add_task(remote_data_manager.handle_data)
     return {"status": "Hello World"}
 
-@app.get('/recent-records/')
-async def recent_records(device_id:str, db:Connection=Depends(get_db)):
-    log.info(f'Finding records for device: {device_id}')
-    results = utils.get_data_for_id(db,device_id)
+@app.get('/last-n-records/')
+async def last_n_records(device_id:str|None=None, n:int=10, db:Connection=Depends(get_db)):
+    log.info(f'Finding last {n} records for device: {device_id}')
+    results = utils.get_data_for_id(db,device_id,n)
     if results:
         results = [r.dict(exclude = {'rowid','created_at'}) for r in results]
+        return {'status':'OK','results':results}
+    else:
+        return {'status':'NONE','results':[]}
+
+@app.get('/seconds-ago/')
+async def records_seconds_ago(device_id: list[str] | None = Query(default=None),
+                              seconds_ago:int|None=3600,
+                              db:Connection=Depends(get_db)):
+    log.info(f'Finding records from {device_id} last {seconds_ago/3600} hours')
+    results = utils.get_recent_data(db,seconds_ago=seconds_ago,device_ids=device_id)
+    if results:
+        results = [r.dict(exclude = {'rowid','created_at'}) for r in results]
+        return {'status':'OK','results':results}
+    else:
+        return {'status':'NONE','results':[]}
+    
+@app.get('/device-ids/')
+async def device_ids(db:Connection=Depends(get_db)):
+    log.info(f'Finding uniuqe device ids')
+    results = utils.get_unique_devices(db)
+    if results:
+        results = [dict(r) for r in results]
         return {'status':'OK','results':results}
     else:
         return {'status':'NONE','results':[]}
