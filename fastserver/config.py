@@ -6,9 +6,9 @@ from os import environ, path
 basedir =  path.abspath(path.dirname(__file__))
 load_dotenv(path.join(basedir,'deploy','.env'))
 
-DB_LOC = Path('fastserver','db.sqlite')
-DB_SCHEMA = Path('fastserver','schema.sql')
-DB_HANDLERS_DIR = Path('fastserver','.DataHandlers')
+DB_LOC = Path('db.sqlite')
+DB_SCHEMA = Path('schema.sql')
+DB_HANDLERS_DIR = Path('.DataHandlers')
 INFLUX_MEASUREMENT = environ.get('INFLUX_MEAS')
 INFLUX_HOST = environ.get('INFLUX_HOST')
 try:

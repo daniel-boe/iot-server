@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, validator
-from fastserver.config import INFLUX_MEASUREMENT
+from config import INFLUX_MEASUREMENT
 
 
 class RawDeviceRecord(BaseModel):

@@ -1,19 +1,28 @@
-from fastapi import FastAPI, BackgroundTasks, Depends, Query
-from fastserver import models, utils
-from devtools import debug
-from fastserver import tasks
-from fastserver.database import get_db, insert_data_to_local, init_db
+import models, utils
+import tasks
+from fastapi import FastAPI, BackgroundTasks, Depends, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from sqlite3 import Connection
 from loguru import logger as log
-
+from database import get_db, insert_data_to_local, init_db
+from devtools import debug
 
 init_db()
 remote_data_manager = tasks.RemoteDBManager()
 app = FastAPI()
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+@app.get('/',response_class=HTMLResponse)
+async def index(request:Request):
+    return templates.TemplateResponse('index.html',{'request':request})
+
+@app.get('/index/',response_class=RedirectResponse)
+async def index_redirect(request:Request):
+    return RedirectResponse('/')
 
 @app.post("/sensor-data/")
 async def sensor_data(packet: models.RawDeviceRecord, background_tasks: BackgroundTasks, db: Connection=Depends(get_db)):

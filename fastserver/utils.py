@@ -1,7 +1,7 @@
+import models
 import datetime as dt
 from sqlite3 import Row
 from devtools import debug
-from fastserver import models
 from sqlite3 import Connection
 from pydantic import parse_obj_as
 
@@ -43,8 +43,6 @@ def get_unique_devices(db:Connection) -> list[Row]:
     else:
         return []
     
-
-
 def get_last_measurements(db:Connection) -> list[Row]:
     q = """SELECT X.device_id, strftime('%s','now') - strftime('%s',X.tmeas) as seconds_ago,
                  X.sensor_name, round(X.sensor_value,2) as value
