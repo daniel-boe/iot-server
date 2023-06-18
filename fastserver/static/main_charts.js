@@ -63,7 +63,7 @@ async function update_chart(){
 async function get_data() {
     const logger = logger_selector.value;
     console.log(logger);
-    const params = {device_id:logger,seconds_ago:604800};
+    const params = {device_id:logger,seconds_ago:172800};
     const url = "/seconds-ago?" + new URLSearchParams(params);
     const response = await fetch(url);
     const jsonData = await response.json();
