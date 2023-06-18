@@ -16,6 +16,9 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+############### FRONTEND #############################
+
+
 @app.get('/',response_class=HTMLResponse)
 async def index(request:Request):
     return templates.TemplateResponse('index.html',{'request':request})
@@ -23,6 +26,12 @@ async def index(request:Request):
 @app.get('/index/',response_class=RedirectResponse)
 async def index_redirect(request:Request):
     return RedirectResponse('/')
+
+@app.get('/charts/',response_class=HTMLResponse)
+async def charts(request:Request):
+    return templates.TemplateResponse('charts.html',{'request':request})
+
+################### API - POSTS #######################
 
 @app.post("/sensor-data/")
 async def sensor_data(packet: models.RawDeviceRecord, background_tasks: BackgroundTasks, db: Connection=Depends(get_db)):
@@ -37,7 +46,7 @@ async def sensor_data_many(packet: models.RawDeviceRecordMany, background_tasks:
     background_tasks.add_task(remote_data_manager.handle_data)
     return {"status": "Hello World"}
 
-################ GETS ##################################
+################ API - GETS ##################################
 
 @app.get('/last-n-records/')
 async def last_n_records(device_id:str|None=None, n:int=10, db:Connection=Depends(get_db)):

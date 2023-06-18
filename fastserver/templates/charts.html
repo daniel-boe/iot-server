@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}
+  Charts
+{% endblock %}
+
+{% block header %}
+  <h1>Charts</h1>
+{% endblock %}
+
+{% block content %}
+<div>
+    <label for="logger-select">Select a Logger:</label>
+    <select name="sensors" id="logger-select">
+        <option value="" disabled>--Please choose an option--</option>
+    </select>
+</div>
+
+<div>
+    <canvas id="myChart"></canvas>
+</div>
+  
+  {% endblock %}
+  
+{% block javascript %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@^1"></script>
+<script src="{{ url_for('static', path='/main_charts.js') }}"></script>
+{% endblock %}
