@@ -133,3 +133,5 @@ deploy/
 *.sqlite
 
 .DataHandlers/
+
+.DS_Store

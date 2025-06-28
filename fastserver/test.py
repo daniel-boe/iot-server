@@ -1,7 +1,7 @@
 import requests
 import random
 import time
-from devtools import debug
+from devtools import debug  
 
 url='http://localhost:8000/sensor-data/'
 device_id = 'ttt123456789ttt'
