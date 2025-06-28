@@ -1,8 +1,8 @@
 import contextlib
 import sqlite3
-from fastserver.config import DB_LOC, DB_SCHEMA, DB_HANDLERS_DIR
+from config import DB_LOC, DB_SCHEMA, DB_HANDLERS_DIR
 from loguru import logger as log
-from fastserver import models
+import models
 
 def init_db():
     with sqlite3.connect(DB_LOC) as db:

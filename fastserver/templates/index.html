@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}
+  Home
+{% endblock %}
+
+{% block header %}
+  <h1>Home</h1>
+{% endblock %}
+
+{% block content %}
+<div class="center-column">
+    <table id="latest-records-table" class="minimal-table large">
+        <thead>
+          <tr>
+            <th>Device</th>
+            <th>Seconds Ago</th>
+            <th>Sensor</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Device</td>
+                <td>Seconds Ago</td>
+                <td>Sensor</td>
+                <td>Value</td>
+            </tr>           
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="{{ url_for('static', path='/recent_records.js') }}"></script>
+{% endblock %}

@@ -1,6 +1,6 @@
 import abc
-from fastserver import models, config
-from fastserver.database import get_db_ctx
+import models, config
+from database import get_db_ctx
 from loguru import logger as log
 from sqlite3 import Connection
 from pathlib import Path
