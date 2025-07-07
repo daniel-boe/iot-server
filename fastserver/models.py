@@ -1,7 +1,12 @@
 import datetime as dt
-from utils import utc_time
 from pydantic import BaseModel, Field, type_adapter
 
+def utc_time(no_tz=True):
+    tz=dt.timezone.utc
+    if no_tz:
+        return dt.datetime.now(tz).replace(tzinfo=None)
+    else:
+        return dt.datetime.now(tz)     
 
 class RawDeviceRecord(BaseModel):
     device_id: str
