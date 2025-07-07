@@ -7,7 +7,6 @@ from fastapi.staticfiles import StaticFiles
 from sqlite3 import Connection
 from loguru import logger as log
 from database import get_db, insert_data_to_local, init_db
-from devtools import debug
 
 init_db()
 remote_data_manager = tasks.RemoteDBManager()
@@ -53,7 +52,7 @@ async def last_n_records(device_id:str|None=None, n:int=10, db:Connection=Depend
     log.info(f'Finding last {n} records for device: {device_id}')
     results = utils.get_data_for_id(db,device_id,n)
     if results:
-        results = [r.dict(exclude = {'rowid','created_at'}) for r in results]
+        results = [r.model_dump(exclude = {'rowid','created_at'}) for r in results]
         return {'status':'OK','results':results}
     else:
         return {'status':'NONE','results':[]}
@@ -65,14 +64,14 @@ async def records_seconds_ago(device_id: list[str] | None = Query(default=None),
     log.info(f'Finding records from {device_id} last {seconds_ago/3600} hours')
     results = utils.get_recent_data(db,seconds_ago=seconds_ago,device_ids=device_id)
     if results:
-        results = [r.dict(exclude = {'rowid','created_at'}) for r in results]
+        results = [r.model_dump(exclude = {'rowid','created_at'}) for r in results]
         return {'status':'OK','results':results}
     else:
         return {'status':'NONE','results':[]}
     
 @app.get('/device-ids/')
 async def device_ids(db:Connection=Depends(get_db)):
-    log.info(f'Finding uniuqe device ids')
+    log.info(f'Finding unique device ids')
     results = utils.get_unique_devices(db)
     if results:
         results = [dict(r) for r in results]

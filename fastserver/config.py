@@ -1,32 +1,44 @@
-import json
+import tomllib as toml
+from loguru import logger as log
+from dataclasses import dataclass, field
 from pathlib import Path
-from dotenv import load_dotenv
-from os import environ, path
 
-basedir =  path.abspath(path.dirname(__file__))
-load_dotenv(path.join(basedir,'deploy','.env'))
+def load_config():
+    try:
+        return RootConfig(**toml.loads(Path('config.toml').read_text()))
+    except FileNotFoundError:
+        return RootConfig()
+    except toml.TOMLDecodeError:
+        return RootConfig()
+    
+def validate_nested_class(obj:object,
+                          hint:type,
+                          name:str):
+    if not isinstance(obj,(dict,hint)):
+        raise ValueError(f'{name} is invalid must be dict or {hint.__name__}')
+    elif isinstance(obj,dict):
+        log.debug(f'Data passed for {name}, validating...')
+        return hint(**obj)
+    else:
+        log.debug(f'No data passed, returning default object')
+        return obj
 
-DB_LOC = Path('db.sqlite')
-DB_SCHEMA = Path('schema.sql')
-DB_HANDLERS_DIR = Path('.DataHandlers')
-INFLUX_MEASUREMENT = environ.get('INFLUX_MEAS')
-INFLUX_HOST = environ.get('INFLUX_HOST')
-try:
-    INFLUX_PORT = int(environ.get('INFLUX_PORT'))
-except TypeError:
-    INFLUX_PORT = None
+@dataclass
+class LocalDBConfig:
+    name: str = 'db.sqlite'
+    schema: str = 'schema.sql'
+    handlers_dir: str = '.DataHandlers'
 
-INFLUX_USER = environ.get('INFLUX_USER')
-INFLUX_PASS = environ.get('INFLUX_PASS')
-INFLUX_DB = environ.get('INFLUX_DB')
-DATA_HANDLERS = json.loads(environ.get('DATA_HANDLERS','[]').replace("'",'"'))
+@dataclass
+class RootConfig:
+    local_db: LocalDBConfig = field(default_factory=LocalDBConfig)
+    remote_db: dict[str,dict] = field(default_factory=dict) 
 
-MARIA_USER=environ.get('MARIA_USER')
-MARIA_PASSWORD=environ.get('MARIA_PASSWORD')
-MARIA_HOST=environ.get('MARIA_HOST')
-try:
-    MARIA_PORT=int(environ.get('MARIA_PORT'))
-except TypeError:
-    MARIA_PORT=None
-MARIA_DATABASE=environ.get('MARIA_DATABASE')
-MARIA_TABLE=environ.get('MARIA_TABLE')
+    def __post_init__(self):
+        for attr in ['local_db',]:
+            res = validate_nested_class(
+                self.__getattribute__(attr),
+                self.__annotations__.get(attr),
+                attr
+            )
+            self.__setattr__(attr,res)

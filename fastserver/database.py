@@ -1,15 +1,17 @@
 import contextlib
 import sqlite3
-from config import DB_LOC, DB_SCHEMA, DB_HANDLERS_DIR
-from loguru import logger as log
 import models
+from pathlib import Path
+from config import load_config
+from loguru import logger as log
+
+config = load_config()
 
 def init_db():
-    with sqlite3.connect(DB_LOC) as db:
-        db.executescript(DB_SCHEMA.read_text())
+    with sqlite3.connect(config.local_db.name) as db:
+        db.executescript(Path(config.local_db.schema).read_text())
     db.close()
-    DB_HANDLERS_DIR.mkdir(exist_ok=True)
-
+    Path(config.local_db.handlers_dir).mkdir(exist_ok=True)
 
 def get_db():
     db = sqlite3.connect(DB_LOC,check_same_thread=False)
@@ -22,7 +24,7 @@ def get_db():
 
 @contextlib.contextmanager
 def get_db_ctx():
-    db = sqlite3.connect(DB_LOC,check_same_thread=False)
+    db = sqlite3.connect(config.local_db.name,check_same_thread=False)
     db.row_factory = sqlite3.Row
     try:
         yield db

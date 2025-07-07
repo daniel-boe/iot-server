@@ -1,17 +1,12 @@
-from datetime import datetime
-from pydantic import BaseModel, validator
-from config import INFLUX_MEASUREMENT
+import datetime as dt
+from utils import utc_time
+from pydantic import BaseModel, Field, type_adapter
 
 
 class RawDeviceRecord(BaseModel):
     device_id: str
-    tmeas: datetime = None 
+    tmeas: dt.datetime = Field(default_factory=utc_time) 
     measurements: dict
-
-    @validator('tmeas', pre=True, always=True)
-    # Dynamic defaults (keep an eye here https://github.com/pydantic/pydantic/issues/866)
-    def set_ts_now(cls, v):
-        return v or datetime.utcnow()
 
     class Config: 
         schema_extra = {
@@ -27,7 +22,7 @@ class RawDeviceRecord(BaseModel):
 
 
 class RawSample(BaseModel):
-    tmeas: datetime
+    tmeas: dt.datetime
     measurements: dict
 
     class Config: 
@@ -73,8 +68,8 @@ class RawDeviceRecordMany(BaseModel):
 class TableRecord(BaseModel):
     rowid: int
     device_id: str
-    tmeas: datetime  
-    created_at: datetime
+    tmeas: dt.datetime  
+    created_at: dt.datetime
     sensor_name: str
     sensor_value: float
 
@@ -89,13 +84,17 @@ class TableRecord(BaseModel):
             }
         }
 
-    def to_influx(self):
+    def to_influx(self,measurement):
+        now = utc_time()
         return dict(
-            measurement = INFLUX_MEASUREMENT,
+            measurement = measurement,
             tags = dict(device_id=self.device_id,sensor_name=self.sensor_name),
             time = self.tmeas.isoformat(timespec='milliseconds'),
-            fields = dict(sensor_value=self.sensor_value,tcreate=datetime.utcnow().isoformat(timespec='milliseconds'))
+            fields = dict(sensor_value=self.sensor_value,tcreate=now)
         )
     
     def to_sql(self):
         return (self.tmeas,self.device_id,self.sensor_name,self.sensor_value)
+    
+# Define some adaptors for lists of each model
+TableRecordList = type_adapter(list[TableRecord])

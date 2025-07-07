@@ -1,7 +1,6 @@
 import requests
 import random
 import time
-from devtools import debug  
 
 url='http://localhost:8000/sensor-data/'
 device_id = 'ttt123456789ttt'
@@ -12,5 +11,5 @@ for i in range(10):
                 'testMeas3':random.random()*20+40}
     packet = dict(device_id=device_id,measurements=measurements)
     response = requests.post(url,json=packet)
-    debug(f'status code:{response.status_code}')
+    print(f'status code:{response.status_code}')
     time.sleep(1)

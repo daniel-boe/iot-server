@@ -1,20 +1,17 @@
 import abc
-import models, config
+import models
 from database import get_db_ctx
 from loguru import logger as log
 from sqlite3 import Connection
-from pathlib import Path
+from config import load_config
+from utils import get_latest_rn
 
-if 'influxdb' in config.DATA_HANDLERS:
-    from influxdb import InfluxDBClient
-
-if 'mariadb' in config.DATA_HANDLERS:
-    import mariadb
+config = load_config()
 
 class RemoteDBManager:
 
     def __init__(self):
-        self.handlers = [c() for c in RemoteDBHandler.__subclasses__() if c.handles in config.DATA_HANDLERS]
+        self.handlers = self.register_handlers()
 
     def handle_data(self,*args,**kwargs):
         log.debug('Handling data plugins')
@@ -23,14 +20,27 @@ class RemoteDBManager:
                 handler.handle(db)    
         log.debug('Handling Data Plugins complete')
 
+    def register_handlers(self):
+        handlers = []
+        for k,d in config.remote_db.items():
+
+            match(k):
+                case 'influxdb':
+                    handlers += [InfluxHandler(**creds) for name,creds in d.items()]
+                case 'mariadb':
+                    handlers += [MariaHandler(**creds) for name,creds in d.items()]
+                case _:
+                    pass
 
 class RemoteDBHandler:
 
-    def __init__(self):
-        self.sent_path = config.DB_HANDLERS_DIR / f'{self.__class__.__name__}.txt'
+    def __init__(self,**kwargs):
+        self.sent_path = config.local_db.handlers_dir / f'{self.__class__.__name__}.txt'
         if not self.sent_path.exists():
-            self.sent_path.write_text('0')
-
+            with get_db_ctx() as db:
+                idx=get_latest_rn(db)
+            self.sent_path.write_text(f'{idx}')
+            
     def handle(self,db:Connection):
         start_rn = int(self.sent_path.read_text())
         if new_rn := self.handler(db,start_rn):
@@ -46,10 +56,26 @@ class RemoteDBHandler:
         """
         pass
 
-
 class InfluxHandler(RemoteDBHandler):
     handles = 'influxdb'
     batch_limit = 10
+
+    def __init__(self,
+                 host:str,
+                 user:str,
+                 password:str,
+                 database:str,
+                 measurement:str,
+                 port:int=8086,
+                 **kwargs):
+        super().__init__(**kwargs)
+        from influxdb import InfluxDBClient
+        self.host = host
+        self.username = user
+        self.password = password
+        self.database = database
+        self.measurement = measurement
+        self.port = port
 
     def handler(self,db:Connection,rn):
         result = False
@@ -59,15 +85,15 @@ class InfluxHandler(RemoteDBHandler):
         data = db.execute(q).fetchall()
         data = [models.TableRecord(**r) for r in data]
         row_ids = [r.rowid for r in data]
-        data = [r.to_influx() for r in data]
+        data = [r.to_influx(self.measurement) for r in data]
         log.info(f'Found {len(row_ids)} records for InfluxDB')
         
         client = InfluxDBClient(
-            host = config.INFLUX_HOST,
-            port = config.INFLUX_PORT,
-            username = config.INFLUX_USER,
-            password = config.INFLUX_PASS,
-            database = config.INFLUX_DB
+            host = self.host,
+            port = self.port,
+            username = self.user,
+            password = self.INFLUX_PASS,
+            database = self.INFLUX_DB
         )
 
         try:        
@@ -87,6 +113,23 @@ class MariaHandler(RemoteDBHandler):
     handles = 'mariadb'
     batch_limit = 10
 
+    def __init__(self,
+                 user:str,
+                 password:str,
+                 host:str,
+                 database:str,
+                 table:str,
+                 port:int=3306,
+                 **kwargs):
+        super().__init__(**kwargs)
+        import mariadb
+        self.user = user
+        self.password = password
+        self.host = host
+        self.port = port
+        self.database = database
+        self.table = table
+
     def handler(self,db:Connection,rn):
         result = False
 
@@ -102,15 +145,15 @@ class MariaHandler(RemoteDBHandler):
         log.info(f'Found {len(row_ids)} records for MariaDB')
 
         conn = mariadb.connect(
-            user=config.MARIA_USER,
-            password=config.MARIA_PASSWORD,
-            host=config.MARIA_HOST,
-            port=config.MARIA_PORT,
-            database=config.MARIA_DATABASE
+            user=self.user,
+            password=self.config,
+            host=self.host,
+            port=self.port,
+            database=self.database
         )
 
         q = (f"""
-            INSERT INTO {config.MARIA_TABLE}
+            INSERT INTO {self.table}
             (tmeas,device_id,sensor_name,sensor_value)
             VALUES (?,?,?,?)
         """

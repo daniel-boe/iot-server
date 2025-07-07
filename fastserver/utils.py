@@ -1,9 +1,14 @@
 import models
 import datetime as dt
-from sqlite3 import Row
-from devtools import debug
-from sqlite3 import Connection
-from pydantic import parse_obj_as
+from sqlite3 import Row, Connection
+from loguru import log
+
+def utc_time(no_tz=True):
+    tz=dt.timezone.utc
+    if no_tz:
+        return dt.datetime.now(tz).replace(tzinfo=None)
+    else:
+        return dt.datetime.now(tz)     
 
 def get_data_for_id(db:Connection, device_id:str|None, n:int) -> list[models.TableRecord]:
     if device_id:
@@ -14,7 +19,7 @@ def get_data_for_id(db:Connection, device_id:str|None, n:int) -> list[models.Tab
             ORDER BY tmeas DESC LIMIT {n} """
     data = db.execute(q).fetchall()
     if data:
-        return parse_obj_as(list[models.TableRecord],data)
+        return models.TableRecordList.validate_python(data)
     else:
         return []
     
@@ -23,17 +28,26 @@ def get_recent_data(db:Connection,
                     device_ids:list[str]|None=None) -> list[models.TableRecord]:
     q = f"""SELECT * FROM sensorData 
             WHERE TMEAS between 
-            '{(dt.datetime.utcnow() - dt.timedelta(seconds=seconds_ago)).isoformat(sep=' ')}'
-            AND '{dt.datetime.utcnow().isoformat(sep=' ')}'"""
+            '{(utc_time() - dt.timedelta(seconds=seconds_ago)).isoformat(sep=' ')}'
+            AND '{utc_time().isoformat(sep=' ')}'"""
     if device_ids:
         # Note, if there is only 1 element int the tuple, repr adds a trailing comma
         q += f'\nAND device_id IN {repr(tuple(device_ids)).replace(",)", ")")}'
     data = db.execute(q).fetchall()
     if data:
-        return parse_obj_as(list[models.TableRecord],data)
+        return models.TableRecordList.validate_python(data)
     else:
         return []
     
+def get_latest_rn(db:Connection) -> int:
+    q = """SELECT rowid FROM sensorData order by rowid desc limit 1;"""
+    
+    data = db.execute(q).fetchone()
+    if data:
+        return data['rowid']
+    else:
+        return 0
+
 def get_unique_devices(db:Connection) -> list[Row]:
     q = """SELECT device_id,  strftime('%s','now') - strftime('%s',MAX(tmeas)) as last_heard_sec from sensorData GROUP BY device_id"""
     

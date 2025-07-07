@@ -1,0 +1,14 @@
+[Unit]
+Description=iot-server
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=7
+User=pi
+ExecStart=//home/pi/iot-server/fastserver/run.sh
+
+[Install]
+WantedBy=multi-user.target
