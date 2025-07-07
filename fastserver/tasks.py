@@ -31,6 +31,7 @@ class RemoteDBManager:
                     handlers += [MariaHandler(**creds) for name,creds in d.items()]
                 case _:
                     pass
+        return handlers
 
 class RemoteDBHandler:
 

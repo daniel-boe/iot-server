@@ -1,5 +1,5 @@
 import datetime as dt
-from pydantic import BaseModel, Field, type_adapter
+from pydantic import BaseModel, Field, TypeAdapter
 
 def utc_time(no_tz=True):
     tz=dt.timezone.utc
@@ -102,4 +102,4 @@ class TableRecord(BaseModel):
         return (self.tmeas,self.device_id,self.sensor_name,self.sensor_value)
     
 # Define some adaptors for lists of each model
-TableRecordList = type_adapter(list[TableRecord])
+TableRecordList = TypeAdapter(list[TableRecord])

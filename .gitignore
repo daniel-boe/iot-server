@@ -135,3 +135,5 @@ deploy/
 .DataHandlers/
 
 .DS_Store
+
+config.toml
