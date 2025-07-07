@@ -14,7 +14,7 @@ class RawDeviceRecord(BaseModel):
     measurements: dict
 
     class Config: 
-        schema_extra = {
+        json_schema_extra = {
             "example":{
                 "device_id":"12345abcde",
                 "measurements":{
@@ -31,7 +31,7 @@ class RawSample(BaseModel):
     measurements: dict
 
     class Config: 
-        schema_extra = {
+        json_schema_extra = {
             "example":{
                 "tmeas":'2023-01-26 15:00:00',
                 "measurements":{
@@ -47,7 +47,7 @@ class RawDeviceRecordMany(BaseModel):
     samples: list[RawSample]
 
     class Config: 
-        schema_extra = {
+        json_schema_extra = {
             "example":{
                 "device_id":"12345abcde",
                 "samples":[
@@ -79,7 +79,7 @@ class TableRecord(BaseModel):
     sensor_value: float
 
     class Config: 
-        schema_extra = {
+        json_schema_extra = {
             "example":{
                 "device_id":"12345abcde",
                 "tmeas":'2023-01-26 15:00:00',
