@@ -14,7 +14,7 @@ def init_db():
     Path(config.local_db.handlers_dir).mkdir(exist_ok=True)
 
 def get_db():
-    db = sqlite3.connect(DB_LOC,check_same_thread=False)
+    db = sqlite3.connect(config.local_db.name,check_same_thread=False)
     db.row_factory = sqlite3.Row
     try:
         yield db

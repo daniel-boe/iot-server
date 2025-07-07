@@ -1,7 +1,7 @@
 import models
 import datetime as dt
 from sqlite3 import Row, Connection
-from loguru import log
+from loguru import logger as log
 
 def utc_time(no_tz=True):
     tz=dt.timezone.utc
