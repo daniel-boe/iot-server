@@ -18,7 +18,7 @@ for k,d in config.remote_db.items():
             try:
                 import mariadb
             except ModuleNotFoundError:
-                log('MariaDB does not exist')
+                log.warning('MariaDB does not exist')
         case _:
             pass
 
