@@ -95,7 +95,7 @@ class TableRecord(BaseModel):
             measurement = measurement,
             tags = dict(device_id=self.device_id,sensor_name=self.sensor_name),
             time = self.tmeas.isoformat(timespec='milliseconds'),
-            fields = dict(sensor_value=self.sensor_value,tcreate=now)
+            fields = dict(sensor_value=self.sensor_value,tcreate=now.timestamp())
         )
     
     def to_sql(self):

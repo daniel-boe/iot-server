@@ -1,12 +1,25 @@
 import abc
 import models
 from database import get_db_ctx
+from pathlib import Path
 from loguru import logger as log
 from sqlite3 import Connection
 from config import load_config
 from utils import get_latest_rn
 
 config = load_config()
+
+
+for k,d in config.remote_db.items():
+    match(k):
+        case 'influxdb':
+            from influxdb import InfluxDBClient
+        case 'mariadb':
+            import mariadb
+        case _:
+            pass
+
+
 
 class RemoteDBManager:
 
@@ -36,7 +49,7 @@ class RemoteDBManager:
 class RemoteDBHandler:
 
     def __init__(self,**kwargs):
-        self.sent_path = config.local_db.handlers_dir / f'{self.__class__.__name__}.txt'
+        self.sent_path = Path(config.local_db.handlers_dir) / Path(f'{self.__class__.__name__}.txt')
         if not self.sent_path.exists():
             with get_db_ctx() as db:
                 idx=get_latest_rn(db)
@@ -70,7 +83,6 @@ class InfluxHandler(RemoteDBHandler):
                  port:int=8086,
                  **kwargs):
         super().__init__(**kwargs)
-        from influxdb import InfluxDBClient
         self.host = host
         self.username = user
         self.password = password
@@ -92,15 +104,15 @@ class InfluxHandler(RemoteDBHandler):
         client = InfluxDBClient(
             host = self.host,
             port = self.port,
-            username = self.user,
-            password = self.INFLUX_PASS,
-            database = self.INFLUX_DB
+            username = self.username,
+            password = self.password,
+            database = self.database
         )
 
         try:        
             result = client.write_points(data,time_precision='s', batch_size = 100)
         except Exception as ex:
-            log.exception()
+            log.exception('Influx post failed')
         
         client.close()
 
@@ -123,7 +135,6 @@ class MariaHandler(RemoteDBHandler):
                  port:int=3306,
                  **kwargs):
         super().__init__(**kwargs)
-        import mariadb
         self.user = user
         self.password = password
         self.host = host
