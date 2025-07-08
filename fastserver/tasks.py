@@ -15,7 +15,10 @@ for k,d in config.remote_db.items():
         case 'influxdb':
             from influxdb import InfluxDBClient
         case 'mariadb':
-            import mariadb
+            try:
+                import mariadb
+            except ModuleNotFoundError:
+                log('MariaDB does not exist')
         case _:
             pass
 
