@@ -1,5 +1,7 @@
 import datetime as dt
-from pydantic import BaseModel, Field, TypeAdapter
+import json
+from enum import StrEnum
+from pydantic import BaseModel, Field as PyField, TypeAdapter,ConfigDict, field_validator
 
 def utc_time(no_tz=True):
     tz=dt.timezone.utc
@@ -8,9 +10,73 @@ def utc_time(no_tz=True):
     else:
         return dt.datetime.now(tz)     
 
+class FieldTypes(StrEnum):
+    STRING = 'string'
+    FLOAT = 'float'
+    INT = 'int'
+    BOOL = 'bool'
+
+class Field(BaseModel):
+    name: str
+    value: None|str|float|int|bool
+    dtype: FieldTypes
+
+    def format_line_protocol(self):
+        if self.value is None: raise ValueError('Line Protocol cannot have null values')
+        match self.dtype:
+            case FieldTypes.STRING:
+                return f'{self.name}="{self.value}"'
+            case FieldTypes.FLOAT:
+                return f'{self.name}={self.value}'                
+            case FieldTypes.INT:
+                return f'{self.name}={int(self.value)}i'
+            case FieldTypes.BOOL:
+                return f'{self.name}={bool(self.value)}'
+            case _:
+                return f'{self.name}={self.value}'
+
+class Tags(BaseModel):
+    id: str
+    __pydantic_extra__: dict[str,str]
+    model_config = ConfigDict(extra='allow')
+
+class Record(BaseModel):
+    measurement: str
+    tags:Tags
+    fields:list[Field]
+    time: dt.datetime = PyField(default_factory=lambda: dt.datetime.now(tz=dt.timezone.utc).replace(tzinfo=None))
+    rowid: int|None = PyField(default=None, exclude=True)
+
+    @field_validator('tags','fields',mode='before')
+    @classmethod
+    def load_json_strings(cls, value:str):
+        if isinstance(value,str):
+            return json.loads(value)
+        else: return value
+
+    def model_dump_sqlite(self):
+        """Records are nominally stored as rows in a sqlite db.
+        tags and fields are stored as sqlite JSON strings.  To write to the 
+        sqlite db, we need a dictionary where tags and fields are JSON strings. 
+        To accomplish this, we need a custom model dump that effectively combines
+        the root model_dump and mdoel_dump_json
+        """
+        return dict(
+            measurement = self.measurement,
+            tags = self.tags.model_dump_json(),
+            fields = json.dumps([f.model_dump() for f in self.fields]),
+            time = self.time.isoformat()
+        )
+    def model_dump_line_protocol(self) -> str:
+
+        time = int(self.time.timestamp()*1000) 
+        tags = ','+','.join([f'{k}={v}' for k,v in self.tags.model_dump().items()]) if self.tags else ''
+        fields = ','.join([f.format_line_protocol() for f in self.fields if f.value is not None])
+        return f"{self.measurement}{tags} {fields} {time}"    
+
 class RawDeviceRecord(BaseModel):
     device_id: str
-    tmeas: dt.datetime = Field(default_factory=utc_time) 
+    tmeas: dt.datetime = PyField(default_factory=utc_time) 
     measurements: dict
 
     class Config: 

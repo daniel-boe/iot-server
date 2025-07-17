@@ -53,6 +53,16 @@ def insert_data_to_local(db :sqlite3.Connection ,data: models.RawDeviceRecord | 
     if not records:
         return True
     db.executemany(q,records)
+
+def insert_records_to_local(db :sqlite3.Connection, data: models.Record | list[models.Record]):
+    q = """INSERT INTO sensorRecords ('measurement','tags','fields','time') VALUES (:measurement,:tags,:fields,:time)"""
     
+    if not isinstance(data,(list,tuple)): data = [data]
+    data = [r.model_dump_sqlite() for r in data]
+    try:
+        db.executemany(q,data)    
+    except Exception:
+        log.exception('Exception on insterting records')
+
 if __name__ == '__main__':
     init_db()

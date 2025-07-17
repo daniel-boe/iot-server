@@ -1,5 +1,6 @@
 import abc
 import models
+import httpx
 from database import get_db_ctx
 from pathlib import Path
 from loguru import logger as log
@@ -9,11 +10,8 @@ from utils import get_latest_rn
 
 config = load_config()
 
-
 for k,d in config.remote_db.items():
     match(k):
-        case 'influxdb':
-            from influxdb import InfluxDBClient
         case 'mariadb':
             try:
                 import mariadb
@@ -21,7 +19,6 @@ for k,d in config.remote_db.items():
                 log.warning('MariaDB does not exist')
         case _:
             pass
-
 
 
 class RemoteDBManager:
@@ -82,42 +79,40 @@ class InfluxHandler(RemoteDBHandler):
                  user:str,
                  password:str,
                  database:str,
-                 measurement:str,
                  port:int=8086,
+                 vers=1,
                  **kwargs):
         super().__init__(**kwargs)
-        self.host = host
-        self.username = user
-        self.password = password
-        self.database = database
-        self.measurement = measurement
-        self.port = port
+
+        match(vers):
+            case 1:
+               self.url = f"http://{host}:{port}/write?db={database}&precision=ms&u={user}&p={password}"
+            case 2:
+               self.url = f"http://{host}:{port}/api/v2/write?db={database}&precision=ms&u={user}&p={password}"                
+            case 3:
+               self.url = f"http://{host}:{port}/api/v3/write_lp?db={database}&precision=ms&u={user}&p={password}"
+            case _:
+                raise RuntimeError('Invalid influx version specified')
 
     def handler(self,db:Connection,rn):
         result = False
 
         log.info('Forwarding Data to InfluxDB')
-        q = f'SELECT * FROM sensorDataSync WHERE rowID BETWEEN {rn} AND {rn + self.batch_limit}'
+        q = f'SELECT rowid, * FROM sensorRecords WHERE rowid BETWEEN {rn} AND {rn + self.batch_limit}'
         data = db.execute(q).fetchall()
-        data = [models.TableRecord(**r) for r in data]
+        data = [models.Record(**dict(r)) for r in data]
         row_ids = [r.rowid for r in data]
-        data = [r.to_influx(self.measurement) for r in data]
+        data = [r.model_dump_line_protocol() for r in data]
         log.info(f'Found {len(row_ids)} records for InfluxDB')
-        
-        client = InfluxDBClient(
-            host = self.host,
-            port = self.port,
-            username = self.username,
-            password = self.password,
-            database = self.database
-        )
-
-        try:        
-            result = client.write_points(data,time_precision='s', batch_size = 100)
-        except Exception as ex:
-            log.exception('Influx post failed')
-        
-        client.close()
+    
+        try:
+            packet = '\n'.join(data).encode()
+            with httpx.Client() as client:
+                r = client.post(self.url,content=packet)
+            if (r.status_code >300) : log.warning('Bad response from endpoint')
+            else: result = True
+        except httpx.HTTPError:
+            log.warning('Something bad happened in the request')
 
         if result:
             log.info(f'Deleting {row_ids} from sync table')

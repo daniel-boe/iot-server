@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlite3 import Connection
 from loguru import logger as log
-from database import get_db, insert_data_to_local, init_db
+from database import get_db, insert_data_to_local, init_db, insert_records_to_local
 
 init_db()
 remote_data_manager = tasks.RemoteDBManager()
@@ -44,6 +44,13 @@ async def sensor_data_many(packet: models.RawDeviceRecordMany, background_tasks:
     insert_data_to_local(db,packet)
     background_tasks.add_task(remote_data_manager.handle_data)
     return {"status": "Hello World"}
+
+@app.post("/sensor-record/")
+async def sensor_record(record:models.Record, background_tasks: BackgroundTasks, db: Connection=Depends(get_db)):
+    log.info(record.model_dump_json())
+    insert_records_to_local(db,data=record)
+    background_tasks.add_task(remote_data_manager.handle_data)    
+    return {"status":"all good"}
 
 ################ API - GETS ##################################
 

@@ -137,3 +137,6 @@ deploy/
 .DS_Store
 
 config.toml
+
+*.sqlite
+*.db

@@ -20,13 +20,12 @@ CREATE TABLE IF NOT EXISTS sensorDataSync (
   sensor_value FLOAT
 );
 
--- experiment log - 
-CREATE TABLE IF NOT EXISTS experimentData (
-  device_id TEXT NOT NULL,
-  uut_id TEXT NOT NULL,
-  test_id TEXT NOT NULL,
-  tmeas TIMESTAMP NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP 
+-- Record Table  
+CREATE TABLE IF NOT EXISTS sensorRecords (
+  time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  measurement TEXT NOT NULL,
+  tags JSON,
+  fields JSON
 );
 
 CREATE TRIGGER IF NOT EXISTS remoteQueueTrigger
