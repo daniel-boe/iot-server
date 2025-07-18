@@ -44,7 +44,7 @@ class Record(BaseModel):
     measurement: str
     tags:Tags
     fields:list[Field]
-    time: dt.datetime = PyField(default_factory=lambda: dt.datetime.now(tz=dt.timezone.utc).replace(tzinfo=None))
+    time: dt.datetime = PyField(default_factory=lambda: dt.datetime.now(tz=dt.timezone.utc))
     rowid: int|None = PyField(default=None, exclude=True)
 
     @field_validator('tags','fields',mode='before')
