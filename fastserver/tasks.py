@@ -38,8 +38,10 @@ class RemoteDBManager:
         for k,d in config.remote_db.items():
 
             match(k):
-                case 'influxdb':
-                    handlers += [InfluxHandler(**creds) for name,creds in d.items()]
+                case 'influxdb1':
+                    handlers += [Influx1Handler(**creds) for name,creds in d.items()]
+                case 'influxdb2':
+                    handlers += [Influx2Handler(**creds) for name,creds in d.items()]
                 case 'mariadb':
                     handlers += [MariaHandler(**creds) for name,creds in d.items()]
                 case _:
@@ -47,6 +49,7 @@ class RemoteDBManager:
         return handlers
 
 class RemoteDBHandler:
+    handles=None
 
     def __init__(self,**kwargs):
         self.sent_path = Path(config.local_db.handlers_dir) / Path(f'{self.__class__.__name__}.txt')
@@ -70,8 +73,18 @@ class RemoteDBHandler:
         """
         pass
 
-class InfluxHandler(RemoteDBHandler):
-    handles = 'influxdb'
+    def load_data(self,db:Connection,rn):
+        log.info(f'Forwarding Data for {self.handles}')
+        q = f'SELECT rowid, * FROM sensorRecords WHERE rowid BETWEEN {rn} AND {rn + self.batch_limit}'
+        data = db.execute(q).fetchall()
+        data = [models.Record(**dict(r)) for r in data]
+        row_ids = [r.rowid for r in data]
+        data = [r.model_dump_line_protocol() for r in data]
+        log.info(f'Found {len(row_ids)} records for processing to {self.handles}')
+        return row_ids,data
+
+class Influx1Handler(RemoteDBHandler):
+    handles = 'influxdb1'
     batch_limit = 10
 
     def __init__(self,
@@ -84,30 +97,52 @@ class InfluxHandler(RemoteDBHandler):
                  **kwargs):
         super().__init__(**kwargs)
 
-        match(vers):
-            case 1:
-               self.url = f"http://{host}:{port}/write?db={database}&precision=ms&u={user}&p={password}"
-            case 2:
-               self.url = f"http://{host}:{port}/api/v2/write?db={database}&precision=ms&u={user}&p={password}"                
-            case 3:
-               self.url = f"http://{host}:{port}/api/v3/write_lp?db={database}&precision=ms&u={user}&p={password}"
-            case _:
-                raise RuntimeError('Invalid influx version specified')
+        self.url = f"http://{host}:{port}/write?db={database}&precision=ms&u={user}&p={password}"
 
     def handler(self,db:Connection,rn):
         result = False
 
-        log.info('Forwarding Data to InfluxDB')
-        q = f'SELECT rowid, * FROM sensorRecords WHERE rowid BETWEEN {rn} AND {rn + self.batch_limit}'
-        data = db.execute(q).fetchall()
-        data = [models.Record(**dict(r)) for r in data]
-        row_ids = [r.rowid for r in data]
-        data = [r.model_dump_line_protocol() for r in data]
-        log.info(f'Found {len(row_ids)} records for InfluxDB')
+        row_ids,data = self.load_data(db,rn)
     
         try:
             packet = '\n'.join(data).encode()
             with httpx.Client() as client:
+                r = client.post(self.url,content=packet)
+            if (r.status_code >300) : log.warning('Bad response from endpoint')
+            else: result = True
+        except httpx.HTTPError:
+            log.warning('Something bad happened in the request')
+
+        if result:
+            log.info(f'Deleting {row_ids} from sync table')
+            return max(row_ids)
+        else:
+            log.error('Writing to influx failed')
+
+class Influx2Handler(RemoteDBHandler):
+    handles = 'influxdb2'
+    batch_limit = 10
+
+    def __init__(self,
+                 host:str,
+                 organization:str,
+                 bucket:str,
+                 token:str,
+                 port:int=8086,
+                 **kwargs):
+        super().__init__(**kwargs)
+
+        self.url = f"http://{host}:{port}/api/v2/write?org={organization}&bucket={bucket}&precision=ms"            
+        self.token = token    
+
+    def handler(self,db:Connection,rn):
+        result = False
+
+        row_ids,data = self.load_data(db,rn)
+    
+        try:
+            packet = '\n'.join(data).encode()
+            with httpx.Client(headers={'Authorization':f"Token {self.token}"}) as client:
                 r = client.post(self.url,content=packet)
             if (r.status_code >300) : log.warning('Bad response from endpoint')
             else: result = True
