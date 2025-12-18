@@ -20,7 +20,6 @@ for k,d in config.remote_db.items():
         case _:
             pass
 
-
 class RemoteDBManager:
 
     def __init__(self):
@@ -108,6 +107,40 @@ class Influx1Handler(RemoteDBHandler):
             packet = '\n'.join(data).encode()
             with httpx.Client() as client:
                 r = client.post(self.url,content=packet)
+            if (r.status_code >300) : log.warning('Bad response from endpoint')
+            else: result = True
+        except httpx.HTTPError:
+            log.warning('Something bad happened in the request')
+
+        if result:
+            log.info(f'Deleting {row_ids} from sync table')
+            return max(row_ids)
+        else:
+            log.error('Writing to influx failed')
+
+class QuestHandler(RemoteDBHandler):
+    handles = 'questdb'
+    batch_limit = 100
+    headers = {'Content-Type':'application/vnd.influxdb.line-protocol'}
+
+    def __init__(self,
+                 url:str,
+                 user:str,
+                 password:str,
+                 **kwargs):
+        super().__init__(**kwargs)
+
+        self.url = url
+        self.auth = httpx.BasicAuth(user,password)
+
+    def handler(self,db:Connection,rn):
+        result = False
+        row_ids,data = self.load_data(db,rn)
+    
+        try:
+            packet = '\n'.join(data).encode()
+            with httpx.Client() as client:
+                r = client.post(self.url,content=packet,auth=self.auth,headers=self.headers)
             if (r.status_code >300) : log.warning('Bad response from endpoint')
             else: result = True
         except httpx.HTTPError:
