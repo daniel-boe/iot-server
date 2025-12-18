@@ -142,7 +142,11 @@ class QuestHandler(RemoteDBHandler):
         try:
             packet = '\n'.join(data).encode()
             with httpx.Client() as client:
-                r = client.post(self.url,content=packet,auth=self.auth,headers=self.headers)
+                r = client.post(self.url,
+                                content=packet,
+                                auth=self.auth,
+                                headers=self.headers,
+                                params={'precision':'ms'})
             if (r.status_code >300) : log.warning('Bad response from endpoint')
             else: result = True
         except httpx.HTTPError:
