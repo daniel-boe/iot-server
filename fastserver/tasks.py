@@ -39,6 +39,8 @@ class RemoteDBManager:
             match(k):
                 case 'influxdb1':
                     handlers += [Influx1Handler(**creds) for name,creds in d.items()]
+                case 'questdb':
+                    handlers += [QuestHandler(**creds) for name,creds in d.items()]                    
                 case 'influxdb2':
                     handlers += [Influx2Handler(**creds) for name,creds in d.items()]
                 case 'mariadb':
